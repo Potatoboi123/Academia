@@ -1,9 +1,8 @@
 "use client"
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useRefreshToken from "@/hooks/useRefreshToken";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
-import LoadingPage from "./LoadingPage";
 
 interface PersistLoginProps {
   children: React.ReactNode;
@@ -13,9 +12,10 @@ const PersistLogin: React.FC<PersistLoginProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const refresh = useRefreshToken();
 
-  const { persist, accessToken } = useSelector(
+  const { accessToken } = useSelector(
     (state: RootState) => state.auth
   );
+  const persist=useRef(false);
   useEffect(() => {
     const verifyRefreshToken = async () => {
       try {
@@ -26,7 +26,10 @@ const PersistLogin: React.FC<PersistLoginProps> = ({ children }) => {
         setIsLoading(false);
       }
     };
-    if (!accessToken && persist) {
+    const storedValue=localStorage.getItem("persist");
+    persist.current=storedValue ? JSON.parse(storedValue) : false;
+
+    if (!accessToken && persist.current) {
       verifyRefreshToken();
     } else {
       setIsLoading(false);
@@ -38,7 +41,7 @@ const PersistLogin: React.FC<PersistLoginProps> = ({ children }) => {
   }
 
   if (isLoading) {
-    return <LoadingPage />;
+    return null;
   }
 
   return <>{children}</>;

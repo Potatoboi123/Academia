@@ -2,20 +2,18 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {useDispatch } from 'react-redux'
+import { useDispatch } from "react-redux";
 import { login } from "@/lib/features/auth/authSlice";
 
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 
 import GoogleSvg from "@/components/icons/GoogleSvg";
-import Navbar from "@/components/navbar/Navbar";
 
 import { axiosPrivate } from "@/lib/axios";
 
 import { AxiosError } from "axios";
 import type { UserCredentials } from "@/types/auth";
-
 
 interface authErrors {
   email?: string;
@@ -31,15 +29,21 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<authErrors>({});
   const [loading, setLoading] = useState(false);
+  const [persist,setPersist]=useState(false)
   const [isClient, setIsClient] = useState(false); // Track client-side mount
-  const dispatch=useDispatch()
-
   const router = useRouter();
 
+
+  const dispatch = useDispatch();
   // Only run this code on the client-side
   useEffect(() => {
     setIsClient(true);
+    localStorage.setItem("persist", "false")
   }, []);
+  if (!isClient) {
+    // Prevent rendering client-side code during SSR
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,13 +66,14 @@ const LoginPage: React.FC = () => {
     if (error) return;
 
     try {
-  
-      const response = await axiosPrivate.post("/api/users/signin",credentials);
-      const {id,accessToken,name,role}=response.data
-      dispatch(login({id,accessToken,role,userName:name}))
-      
-      router.push("/home");
+      const response = await axiosPrivate.post(
+        "/api/auth/signin",
+        credentials
+      );
+      const { id, accessToken, name, role } = response.data;
+      dispatch(login({ id, accessToken, role, userName: name }));
 
+      router.push("/home");
     } catch (err) {
       if (err instanceof AxiosError) {
         setErrors({ common: err.response?.data?.message || "Login failed" });
@@ -80,15 +85,46 @@ const LoginPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    console.log("Google Sign In");
+    window.open(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`,
+      "_blank",
+      "width=500,height=600"
+    );
+    const receiveMessage = (event: MessageEvent) => {
+      if (event.origin !== process.env.NEXT_PUBLIC_BACKEND_URL) return; // Validate the origin
+
+      const data = event.data; // Extract token from the message
+      if (data) {
+        // Store the token in global state or perform any action
+        dispatch(
+          login({
+            id: data.id,
+            accessToken: data.accessToken,
+            role: data.role,
+            userName: data.userName,
+          })
+        );
+
+        // Redirect to dashboard or show logged-in content
+        router.push('/home')
+      }
+
+      // Clean up the listener
+      window.removeEventListener("message", receiveMessage);
+    };
+
+    // Attach the event listener
+    window.addEventListener("message", receiveMessage);
   };
-  if (!isClient) {
-    // Prevent rendering client-side code during SSR
-    return null;
+
+  function handleChangePersist(){
+    localStorage.setItem('persist',""+!persist)
+    setPersist((prevState)=>!prevState)
+    console.log(persist)
   }
+
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-black text-white flex items-center justify-center px-4 pt-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -174,6 +210,22 @@ const LoginPage: React.FC = () => {
               >
                 {loading ? "Signing in..." : "Sign in"}
               </button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="remember-me"
+                id="remember-me"
+                onChange={handleChangePersist}
+                checked={persist}
+                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+              />
+              <label
+                htmlFor="remember-me"
+                className="block text-md font-medium "
+              >
+                Remember me
+              </label>
             </div>
 
             <div className="relative">

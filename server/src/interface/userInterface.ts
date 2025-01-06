@@ -7,4 +7,5 @@ export interface IUser {
     isBlocked?: boolean;
     profilePicture?: string;
     googleId?: string;
+    id?:string
   }

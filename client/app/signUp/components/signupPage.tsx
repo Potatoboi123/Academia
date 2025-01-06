@@ -6,7 +6,10 @@ import { Eye, EyeOff } from "lucide-react";
 import type { SignupCredentials } from "@/types/auth";
 import GoogleSvg from "@/components/icons/GoogleSvg";
 import axios from "axios";
-import Navbar from "@/components/navbar/Navbar";
+import { useDispatch } from "react-redux";
+import { login } from "@/lib/features/auth/authSlice";
+import { useRouter } from "next/navigation";
+
 
 const SignupPage: React.FC = () => {
   const [credentials, setCredentials] = useState<SignupCredentials>({
@@ -17,37 +20,70 @@ const SignupPage: React.FC = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isClient, setIsClient] = useState(false); // Track client-side mount
+  const [loading, setLoading] = useState(false);
+  const router=useRouter()
 
-  // Only run this code on the client-side
+  const dispatch=useDispatch()
+
+  // To prevent hydration error
   useEffect(() => {
     setIsClient(true);
   }, []);
+  if (!isClient) {
+ 
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Inside the submit function");
+    setLoading(true)
     try {
       axios.post(
-        `${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/users/signup`,
+        `${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/auth/signup`,
         credentials,
         { withCredentials: true }
       );
     } catch (error) {
       console.log(error)
+    } finally{
+      setLoading(false)
     }
-
-    console.log("Signup:", credentials);
   };
 
   const handleGoogleSignIn = async () => {
-  window.open(`${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/users/google`)
+    setLoading(true);
+    window.open(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`,
+      "_blank",
+      "width=500,height=600"
+    );
+    const receiveMessage = (event: MessageEvent) => {
+      if (event.origin !== process.env.NEXT_PUBLIC_BACKEND_URL) return; // Validate the origin
+
+      const data = event.data; // Extract token from the message
+      if (data) {
+
+        dispatch(
+          login({
+            id: data.id,
+            accessToken: data.accessToken,
+            role: data.role,
+            userName: data.userName,
+          })
+        );
+
+        router.push("/home");
+      }
+
+      // Clean up the listener
+      window.removeEventListener("message", receiveMessage);
+    };
+
+    // Attach the event listener
+    window.addEventListener("message", receiveMessage);
+    setLoading(false)
   };
-  if (!isClient) {
-    // Prevent rendering client-side code during SSR
-    return null;
-  }
   return (<>
-  <Navbar />
     <div className="min-h-full bg-black text-white flex items-center justify-center px-4 pt-16">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -156,6 +192,7 @@ const SignupPage: React.FC = () => {
           <div>
             <button
               type="submit"
+              disabled={loading}
               className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors"
             >
               Create account
@@ -176,6 +213,7 @@ const SignupPage: React.FC = () => {
           <button
             type="button"
             onClick={handleGoogleSignIn}
+            disabled={loading}
             className="w-full py-3 px-4 bg-white text-black rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
           >
             <GoogleSvg />

@@ -7,6 +7,8 @@ export interface UserDocument extends Document {
   role: string;
   password: string;
   phoneNo: number;
+  certified:string;
+  certificationId?: mongoose.Types.ObjectId;
   isBlocked: boolean;
   profilePicture: string;
   googleId: string;
@@ -23,6 +25,16 @@ const UserSchema: Schema<UserDocument> = new Schema(
       required: true,
       enum: ["student", "instructor"],
       default: "student",
+    },
+    certified:{
+      type: String,
+      required:true,
+      enum:["pending","rejected","accepted","notRequested"],
+      default: 'notRequested'
+    },
+    certificationId:{
+      type:Schema.Types.ObjectId,
+      ref:"Certification"
     },
     password: { type: String },
     phoneNo: { type: Number },

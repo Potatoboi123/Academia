@@ -2,20 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* :root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Target the scrollbar */
+::-webkit-scrollbar {
+  width: 10px; /* Width of the scrollbar */
+  height: 10px; /* Height of the scrollbar (horizontal) */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Track (background of the scrollbar) */
+::-webkit-scrollbar-track {
+  background: rgb(17 24 39);
+  border-radius: 5px;
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-} */
+/* Thumb (scroll handle) */
+::-webkit-scrollbar-thumb {
+  background: #4e4e4e; 
+  border-radius: 5px; 
+}
+
+/* Thumb on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Scrollbar corner (for diagonal scrolling areas) */
+::-webkit-scrollbar-corner {
+  background: #f0f0f0;
+}
+

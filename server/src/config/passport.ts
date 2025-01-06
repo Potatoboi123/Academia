@@ -9,7 +9,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: `/api/users/google/callback`,
+      callbackURL: `/api/auth/google/callback`,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -28,14 +28,19 @@ passport.use(
           });
         }
 
-        const token = jwt.sign(
-          { userId: user.id, email: user.email },
-          process.env.JWT_SECRET!,
-          { expiresIn: "1h" }
+        const accessToken = jwt.sign(
+          { id: user.id, email: user.email, role: user.role },
+          process.env.JWT_ACCESS_TOKEN_SECRET!,
+          { expiresIn: "15m" }
+        );
+        const refreshToken = jwt.sign(
+          { id: user.id },
+          process.env.JWT_REFRESH_TOKEN_SECRET!,
+          { expiresIn: "1d" }
         );
 
         // Send the user data and JWT token
-        done(null, { user, token });
+        done(null, { user, accessToken, refreshToken });
       } catch (error) {
         done(error, false);
       }
@@ -44,6 +49,6 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user: { user: object; token: string }, done) =>
+passport.deserializeUser((user: { user: object; accessToken: string,refreshToken:string }, done) =>
   done(null, user)
 );

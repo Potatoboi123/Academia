@@ -7,13 +7,13 @@ const publicRoutes = ["/login", "/signUp"];
 // This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
 
-  const userRefreshToken = request.cookies.get("userRefreshToken");
+  const userRefreshToken = request.cookies.get("refreshToken");
 
   const currentPath =request.nextUrl.pathname
   if (userRefreshToken) {
 
     if (publicRoutes.includes(currentPath)) {
-      return NextResponse.redirect(new URL("/dashboard", request.url)); // Redirect to dashboard
+      return NextResponse.redirect(new URL("/home", request.url)); // Redirect to dashboard
     }
 
   }else {

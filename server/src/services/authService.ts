@@ -1,4 +1,4 @@
-// src/services/userService.ts
+// src/services/AuthService.ts
 import { UserRepository } from "../repositories/userRepository";
 //services
 
@@ -16,30 +16,62 @@ import { authenticator } from "otplib";
 import validator from "validator";
 import jwt from "jsonwebtoken";
 
-export class UserService {
+export class AuthService {
   constructor(private userRepository: UserRepository) {}
 
-  async refreshToken(refreshToken:string){
+  async refreshToken(
+    token: string
+  ): Promise<{
+    accessToken: string;
+    id: string;
+    role: string;
+    name: string;
+    refreshToken: string;
+  } | null> {
     try {
+      const payload = jwt.verify(
+        token,
+        process.env.JWT_REFRESH_TOKEN_SECRET!
+      ) as any;
 
-     const payload=jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET!) as any
+      if (!payload) {
+        return null;
+      }
+      const user = await this.userRepository.findById(payload.id);
+      if (!user) {
+        return null;
+      }
 
-     if(!payload){
-      return null
-     }
-     
-     const accessToken = jwt.sign(
-      { id: payload.id, email: payload.email },
-      process.env.JWT_ACCESS_TOKEN_SECRET!,
-      { expiresIn: "15m" }
-    );
+      const accessToken = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        process.env.JWT_ACCESS_TOKEN_SECRET!,
+        { expiresIn: "15m" }
+      );
+      // Creating refresh token everytime /refresh endpoint hits (Refresh token rotation)
+      const refreshToken = jwt.sign(
+        { id: user.id },
+        process.env.JWT_REFRESH_TOKEN_SECRET!,
+        { expiresIn: "1d" }
+      );
 
-    return accessToken
+      //storing the refresh token in redis
+      await redis.set(
+        `refreshToken:${user.id}`,
+        refreshToken,
+        "EX",
+        60 * 60 * 24
+      );
 
+      return {
+        accessToken,
+        id: user.id,
+        role: user.role,
+        name: user.name,
+        refreshToken,
+      };
     } catch (error) {
       return null;
     }
-    
   }
   async sendOtp(input: { name: string; email: string; password: string }) {
     const { name, email, password } = input;
@@ -127,29 +159,37 @@ export class UserService {
     if (!isPasswordValid) throw new AppError("Invalid Email or password", 401);
 
     const accessToken = jwt.sign(
-      { id: user.id, email: user.email,role:user.role },
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_ACCESS_TOKEN_SECRET!,
       { expiresIn: "15m" }
     );
     const refreshToken = jwt.sign(
-      { id: user.id},
+      { id: user.id },
       process.env.JWT_REFRESH_TOKEN_SECRET!,
       { expiresIn: "1d" }
     );
 
     //storing the refresh token in redis
-    await redis.set(`refreshToken:${user.id}`, refreshToken, 'EX', 60 * 60 * 24);
+    await redis.set(
+      `refreshToken:${user.id}`,
+      refreshToken,
+      "EX",
+      60 * 60 * 24
+    );
 
-    const {name,role,id}=user;
-    return { accessToken, refreshToken,name,role,id };
+    const { name, role, id } = user;
+    return { accessToken, refreshToken, name, role, id };
   }
 
-  async signOut(refreshToken:string) {
-    const decoded=jwt.verify(refreshToken,process.env.JWT_REFRESH_TOKEN_SECRET!) as { id: string }
+  async signOut(refreshToken: string) {
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_TOKEN_SECRET!
+    ) as { id: string };
     if (!decoded || !decoded.id) {
-      throw new Error('Invalid token: user ID not found');
+      throw new Error("Invalid token: user ID not found");
     }
     await redis.del(`refreshToken:${decoded.id}`);
-    return true
+    return true;
   }
 }

@@ -1,11 +1,14 @@
 // app/page.tsx
 
 import LandingPage from "@/components/landingPage/LandingPage";
-import Navbar from "@/components/navbar/Navbar";
+import PersistLogin from "@/components/PersistLogin";
 
 export default function Home() {
-  return (<>
-    <Navbar />
-    <LandingPage /></>
+  return (
+    <>
+      <PersistLogin>
+        <LandingPage />
+      </PersistLogin>
+    </>
   );
 }
